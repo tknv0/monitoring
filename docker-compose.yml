@@ -1,0 +1,48 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring-network
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./analysis.txt:/var/lib/grafana/analysis.txt:ro
+    ports:
+      - "3001:3000" #Changed from 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-network
+  timegpt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./analyze_metrics.py:/app/analyze_metrics.py
+    ports:
+      - "8001:8001"  # Prometheus metrics
+    environment:
+      - NIXTLA_API_KEY=${NIXTLA_API_KEY}  # Set in .env file
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-network
+
+volumes:
+  prometheus-data:
+  grafana-data:
+networks:
+  monitoring-network:
+    name: monitoring-network
+    driver: bridge
